@@ -106,6 +106,50 @@ func TestParseGlobalAuthKeepsExplicitEntry(t *testing.T) {
 	}
 }
 
+func TestAuthFromCookiesPersistsEntryMetadata(t *testing.T) {
+	auth, err := authFromCookies(map[string]string{"sessionid": "persist"}, siteCN)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var c credential
+	if json.Unmarshal(auth.StorageJSON, &c) != nil {
+		t.Fatal("storage json is invalid")
+	}
+	if c.Email != auth.Label || c.OAuthProvider != entryID {
+		t.Fatalf("credential should carry its account label and entry: %+v", c)
+	}
+}
+
+func TestImportDesktopAuthUsesVisibleEntry(t *testing.T) {
+	auth, err := importDesktopAuth(nil, map[string]string{"sessionid": "desktop"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if auth.Metadata["oauth_provider"] != entryID {
+		t.Fatalf("desktop import must be grouped under the domestic entry: %+v", auth.Metadata)
+	}
+	if auth.Metadata["legacy_provider"] != desktopEntryID {
+		t.Fatalf("legacy provider marker missing: %+v", auth.Metadata)
+	}
+	if auth.Metadata["email"] == "" {
+		t.Fatal("desktop import must carry an account label")
+	}
+}
+
+func TestParseLegacyDesktopAuthUsesDomesticEntry(t *testing.T) {
+	c := credential{
+		Type: credentialProvider, Site: siteCN, Email: "豆姐账号 旧桌面端",
+		OAuthProvider: desktopEntryID,
+		Cookies:       map[string]string{"sessionid": "legacy"}, DeviceID: "7000000000000000",
+		WebID: "7600000000000000000", FP: "verify_x",
+	}
+	raw, _ := json.Marshal(c)
+	resp := parseAuth(pluginapi.AuthParseRequest{Provider: desktopEntryID, RawJSON: raw, FileName: "doubao-legacy.json"})
+	if !resp.Handled || resp.Auth.Metadata["oauth_provider"] != entryID {
+		t.Fatalf("legacy desktop credential should normalize to doubao: %+v", resp)
+	}
+}
+
 type sequenceSender struct {
 	responses []pluginapi.HTTPResponse
 	requests  []pluginapi.HTTPRequest

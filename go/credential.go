@@ -18,15 +18,16 @@ const (
 )
 
 type credential struct {
-	Type     string            `json:"type"`
-	Site     string            `json:"site,omitempty"`
-	Email    string            `json:"email"`
-	Cookies  map[string]string `json:"cookies"`
-	DeviceID string            `json:"device_id"`
-	WebID    string            `json:"web_id"`
-	FP       string            `json:"fp"`
-	UID      string            `json:"uid,omitempty"`
-	LoginAt  int64             `json:"login_at"`
+	Type          string            `json:"type"`
+	Site          string            `json:"site,omitempty"`
+	Email         string            `json:"email"`
+	OAuthProvider string            `json:"oauth_provider,omitempty"`
+	Cookies       map[string]string `json:"cookies"`
+	DeviceID      string            `json:"device_id"`
+	WebID         string            `json:"web_id"`
+	FP            string            `json:"fp"`
+	UID           string            `json:"uid,omitempty"`
+	LoginAt       int64             `json:"login_at"`
 }
 
 func (c credential) cookieHeader() string {

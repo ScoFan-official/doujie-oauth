@@ -18,13 +18,14 @@ const desktopEntryID = "doubao-desktop"
 func importDesktopAuth(sender httpSender, cookies map[string]string) (pluginapi.AuthData, error) {
 	deviceID, webID, fp := newDeviceIdentity()
 	c := credential{
-		Type:     credentialProvider,
-		Site:     siteCN,
-		Cookies:  cookies,
-		DeviceID: deviceID,
-		WebID:    webID,
-		FP:       fp,
-		LoginAt:  time.Now().Unix(),
+		Type:          credentialProvider,
+		Site:          siteCN,
+		OAuthProvider: entryForSite(siteCN),
+		Cookies:       cookies,
+		DeviceID:      deviceID,
+		WebID:         webID,
+		FP:            fp,
+		LoginAt:       time.Now().Unix(),
 	}
 	label := desktopAccountLabel(sender, c)
 	c.Email = label
@@ -41,11 +42,12 @@ func importDesktopAuth(sender httpSender, cookies map[string]string) (pluginapi.
 		Label:       label,
 		StorageJSON: raw,
 		Metadata: map[string]any{
-			"email":          label,
-			"type":           credentialProvider,
-			"site":           siteCN,
-			"oauth_provider": desktopEntryID,
-			"source":         "desktop-import",
+			"email":           label,
+			"type":            credentialProvider,
+			"site":            siteCN,
+			"oauth_provider":  entryForSite(siteCN),
+			"legacy_provider": desktopEntryID,
+			"source":          "desktop-import",
 		},
 	}, nil
 }

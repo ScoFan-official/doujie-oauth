@@ -1,4 +1,4 @@
-﻿# Operator Guide
+# Operator Guide
 
 ## 1. Install the Library
 
@@ -79,6 +79,14 @@ Browser launch follows the plugin/software settings:
 Sessions are long-lived. When upstream rejects credentials (HTTP 401),
 delete the auth file and sign in or import again.
 
+### Account Grouping
+
+Every saved credential carries an `email` label and an `oauth_provider` entry
+(`doubao` or `dola`). The management panel groups saved accounts by that entry,
+so the domestic and Dola cards list only the accounts created through them even
+though both credentials use `type: doubao`. Desktop imports are stored under the
+domestic entry as well, with `legacy_provider: doubao-desktop` kept for
+backward-compatible parsing.
 ## 3. Upstream Channel Modes
 
 - **`samantha` (default, recommended)**: Lightweight direct channel operating

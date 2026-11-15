@@ -54,6 +54,13 @@ func normalizeSite(site string) string {
 	return siteCN
 }
 
+func entryForSite(site string) string {
+	if normalizeSite(site) == siteGlobal {
+		return internationalEntryID
+	}
+	return entryID
+}
+
 func profileForSite(site string) siteProfile {
 	return siteProfiles[normalizeSite(site)]
 }

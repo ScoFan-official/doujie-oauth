@@ -339,10 +339,7 @@ func pollLogin(req pluginapi.AuthLoginPollRequest, sender httpSender) (pluginapi
 			if authErr != nil {
 				return pluginapi.AuthLoginPollResponse{Status: pluginapi.AuthLoginStatusError, Message: authErr.Error()}, nil
 			}
-			auth.Metadata["oauth_provider"] = entryID
-			if normalizeSite(flow.Site) == siteGlobal {
-				auth.Metadata["oauth_provider"] = internationalEntryID
-			}
+			auth.Metadata["oauth_provider"] = entryForSite(flow.Site)
 			flow.Browser.Close()
 			takeFlow(flowID)
 			return pluginapi.AuthLoginPollResponse{Status: pluginapi.AuthLoginStatusSuccess, Auth: auth}, nil
@@ -421,29 +418,38 @@ func authFromCookies(jar map[string]string, site string) (pluginapi.AuthData, er
 		}
 	}
 	site = normalizeSite(site)
-	c := credential{Type: credentialProvider, Site: site, Cookies: cookies, DeviceID: deviceID, WebID: webID, FP: fp, LoginAt: time.Now().Unix()}
+	prefix := "doubao-"
+	labelPrefix := "豆姐账号 "
+	if site == siteGlobal {
+		prefix = "dola-"
+		labelPrefix = "豆姐国际版账号 "
+	}
+	sum := sha256.Sum256([]byte(cookies["sessionid"]))
+	id := prefix + hex.EncodeToString(sum[:12]) + ".json"
+	label := labelPrefix + strings.ToUpper(hex.EncodeToString(sum[:3]))
+	entry := entryForSite(site)
+	c := credential{
+		Type:          credentialProvider,
+		Site:          site,
+		Email:         label,
+		OAuthProvider: entry,
+		Cookies:       cookies,
+		DeviceID:      deviceID,
+		WebID:         webID,
+		FP:            fp,
+		LoginAt:       time.Now().Unix(),
+	}
 	raw, err := json.Marshal(c)
 	if err != nil {
 		return pluginapi.AuthData{}, errors.New("cannot encode credential")
 	}
-	sum := sha256.Sum256([]byte(cookies["sessionid"]))
-	prefix := "doubao-"
-	providerEntry := entryID
-	labelPrefix := "豆姐账号 "
-	if site == siteGlobal {
-		prefix = "dola-"
-		providerEntry = internationalEntryID
-		labelPrefix = "豆姐国际版账号 "
-	}
-	id := prefix + hex.EncodeToString(sum[:12]) + ".json"
-	label := labelPrefix + strings.ToUpper(hex.EncodeToString(sum[:3]))
 	return pluginapi.AuthData{
 		Provider:    credentialProvider,
 		ID:          id,
 		FileName:    id,
 		Label:       label,
 		StorageJSON: raw,
-		Metadata:    map[string]any{"email": label, "type": credentialProvider, "oauth_provider": providerEntry, "site": site},
+		Metadata:    map[string]any{"email": label, "type": credentialProvider, "oauth_provider": entry, "site": site},
 	}, nil
 }
 
@@ -472,10 +478,7 @@ func parseAuth(req pluginapi.AuthParseRequest) pluginapi.AuthParseResponse {
 	metadata["email"] = persisted.Email
 	metadata["type"] = credentialProvider
 	metadata["site"] = c.site()
-	metadata["oauth_provider"] = entryID
-	if c.site() == siteGlobal {
-		metadata["oauth_provider"] = internationalEntryID
-	}
+	metadata["oauth_provider"] = entryForSite(c.site())
 	return pluginapi.AuthParseResponse{Handled: true, Auth: pluginapi.AuthData{
 		Provider:    credentialProvider,
 		ID:          name,
@@ -577,7 +580,7 @@ func startDesktopImport(req pluginapi.AuthLoginStartRequest, sender httpSender, 
 	cfg := getConfig()
 	base := absoluteBase(cfg.PublicBaseURL, req.BaseURL)
 	resourceURL := base + resourcePrefix + "/imported.html"
-	metadata := map[string]any{"source": "desktop-import"}
+	metadata := map[string]any{"source": "desktop-import", "oauth_provider": entryForSite(siteCN), "site": siteCN}
 	metadata["label"] = authData.Label
 	out = pluginapi.AuthLoginStartResponse{
 		Provider:  credentialProvider,
@@ -615,8 +618,10 @@ func startBrowserAccountLogin(req pluginapi.AuthLoginStartRequest, key []byte, s
 		State:     state,
 		ExpiresAt: expires.UTC(),
 		Metadata: map[string]any{
-			"source":  "browser-login",
-			"message": "已打开浏览器，请使用手机号、密码或短信验证码完成登录",
+			"source":         "browser-login",
+			"message":        "已打开浏览器，请使用手机号、密码或短信验证码完成登录",
+			"oauth_provider": entryForSite(site),
+			"site":           normalizeSite(site),
 		},
 	}, nil
 }

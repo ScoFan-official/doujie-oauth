@@ -8,7 +8,7 @@ import (
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/pluginapi"
 )
 
-var pluginVersion = "0.2.6"
+var pluginVersion = "0.2.7"
 
 type rpcAuthStart struct {
 	pluginapi.AuthLoginStartRequest
@@ -152,6 +152,7 @@ func handleMethod(method string, raw []byte) (any, error) {
 				{"path": "/logo.png", "menu": "", "description": "Plugin logo."},
 				{"path": "/imported.html", "menu": "", "description": "Desktop import result page."},
 				{"path": "/account.html", "menu": "", "description": "Browser-based account sign-in page."},
+				{"path": "/qr.html", "menu": "", "description": "QR sign-in page that renders the login code."},
 				{"path": "/doubao.png", "menu": "", "description": "Domestic sign-in logo."},
 				{"path": "/dola.png", "menu": "", "description": "International sign-in logo."},
 				{"path": "/doujie.json", "menu": "", "description": "Public plugin declaration."},

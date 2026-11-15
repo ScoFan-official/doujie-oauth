@@ -33,7 +33,7 @@ func defaults() config {
 		Signer:          "none",
 		AppVersion:      "2.1.7",
 		Endpoint:        "samantha",
-		AutoOpenBrowser: true,
+		AutoOpenBrowser: false,
 		Browser:         "auto",
 	}
 }

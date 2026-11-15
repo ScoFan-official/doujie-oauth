@@ -63,6 +63,10 @@ func handleManagementGet(req pluginapi.ManagementRequest) (pluginapi.ManagementR
 		body = []byte(browserAccountPage)
 		contentType = "text/html; charset=utf-8"
 		cacheControl = "no-store"
+	case req.Path == resourcePrefix+"/qr.html":
+		body = []byte(qrLoginPage)
+		contentType = "text/html; charset=utf-8"
+		cacheControl = "no-store"
 	default:
 		return pluginapi.ManagementResponse{StatusCode: http.StatusNotFound, Body: []byte("not found")}, nil
 	}
@@ -96,3 +100,25 @@ const browserAccountPage = `<!doctype html>
 <p><a href="https://www.doubao.com/chat/" target="_blank" rel="noreferrer">如果浏览器没有自动弹出，点这里打开豆包</a></p>
 <p class="small">此窗口会在 5 分钟后失效；关闭本页不会中断已打开浏览器的登录。</p>
 </main></body></html>`
+const qrLoginPage = `<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>豆姐扫码登录</title>
+<style>:root{color-scheme:dark}body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;background:#0f172a;color:#e2e8f0;margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}main{width:min(420px,100%);background:#1e293b;border-radius:18px;padding:32px;text-align:center;box-shadow:0 24px 70px rgba(0,0,0,.45)}h1{font-size:22px;margin:0 0 18px}img{width:260px;height:260px;border-radius:12px;background:#fff;padding:10px}p{line-height:1.7;color:#94a3b8;margin:16px 0 0}</style></head>
+<body><main><h1>使用豆姐 App 扫码登录</h1>
+<img id="qr" alt="登录二维码">
+<p id="hint">二维码加载中…</p></main>
+<script>
+(function () {
+  var hash = location.hash.slice(1);
+  var img = document.getElementById('qr');
+  var hint = document.getElementById('hint');
+  if (!hash) {
+    hint.textContent = '二维码已失效，请回到面板重新获取。';
+    return;
+  }
+  img.onload = function () { hint.textContent = '请在手机上确认登录，完成后回到面板。'; };
+  img.onerror = function () { hint.textContent = '二维码加载失败，请回到面板重新获取。'; };
+  img.src = 'data:image/png;base64,' + hash;
+})();
+</script></body></html>`

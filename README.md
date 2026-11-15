@@ -219,7 +219,7 @@ Releases are created by GitHub Actions whenever a `v*` tag is pushed.
 | `max_concurrency` | integer | `3` | 1–100 requests per credential |
 | `public_base_url` | string | empty | Fallback CPA URL for static login result pages |
 | `app_version` | string | `2.1.7` | Domestic client version identifier |
-| `auto_open_browser` | boolean | `true` | Open the isolated browser automatically; `false` returns a QR login instead |
+| `auto_open_browser` | boolean | `false` | Open the isolated browser automatically when `true`; the default `false` returns a QR login and never launches a browser |
 | `browser` | string | `auto` | `auto`, `chrome`, `edge`, or an absolute browser executable path |
 
 ## Development

@@ -7,7 +7,7 @@ func TestConfigureDefaults(t *testing.T) {
 		t.Fatal(err)
 	}
 	cfg := getConfig()
-	if cfg.MaxConcurrency != 3 || cfg.BotID != defaultBotID || cfg.Signer != "none" || !cfg.AutoOpenBrowser || cfg.Browser != "auto" {
+	if cfg.MaxConcurrency != 3 || cfg.BotID != defaultBotID || cfg.Signer != "none" || cfg.AutoOpenBrowser || cfg.Browser != "auto" {
 		t.Fatalf("unexpected defaults: %+v", cfg)
 	}
 }
@@ -17,14 +17,26 @@ func TestAutoOpenBrowserPreference(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer func() { _ = configure(nil) }()
-	if !autoOpenBrowser(nil) {
-		t.Fatal("default must auto-open")
+	if autoOpenBrowser(nil) {
+		t.Fatal("default must not auto-open")
 	}
 	if autoOpenBrowser(map[string]any{"auto_open": "false"}) {
 		t.Fatal("metadata false must disable auto-open")
 	}
-	if autoOpenBrowser(map[string]any{"auto_open": "true"}) == false {
+	if !autoOpenBrowser(map[string]any{"auto_open": "true"}) {
 		t.Fatal("metadata true must enable auto-open")
+	}
+	if !autoOpenBrowser(map[string]any{"browser": "edge"}) {
+		t.Fatal("an explicit browser must enable auto-open")
+	}
+	if autoOpenBrowser(map[string]any{"browser": "none"}) {
+		t.Fatal("browser none must disable auto-open")
+	}
+	if err := configure([]byte("auto_open_browser: true")); err != nil {
+		t.Fatal(err)
+	}
+	if !autoOpenBrowser(nil) {
+		t.Fatal("config must be able to opt in to auto-open")
 	}
 	if browserPreference(map[string]any{"browser": "edge"}) != "edge" {
 		t.Fatal("metadata browser must win")
@@ -33,7 +45,6 @@ func TestAutoOpenBrowserPreference(t *testing.T) {
 		t.Fatal("default browser preference must be auto")
 	}
 }
-
 func TestConfigureValidation(t *testing.T) {
 	cases := []string{
 		"max_concurrency: 0",

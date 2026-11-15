@@ -225,15 +225,30 @@ func startLogin(req pluginapi.AuthLoginStartRequest, sender httpSender) (plugina
 	if err != nil {
 		return out, err
 	}
-	qrDataURL := "data:image/png;base64," + base64.StdEncoding.EncodeToString(png)
+	qrBase64 := base64.StdEncoding.EncodeToString(png)
+	loginURL := ""
+	for _, candidate := range []string{qrEnvelope.Data.QRCodeURL, qrEnvelope.Data.QRCode} {
+		candidate = strings.TrimSpace(candidate)
+		if strings.HasPrefix(candidate, "https://") || strings.HasPrefix(candidate, "http://") {
+			loginURL = candidate
+			break
+		}
+	}
+	if loginURL == "" {
+		if base := absoluteBase(getConfig().PublicBaseURL, req.BaseURL); base != "" {
+			loginURL = base + resourcePrefix + "/qr.html#" + qrBase64
+		} else {
+			loginURL = "data:image/png;base64," + qrBase64
+		}
+	}
 	out = pluginapi.AuthLoginStartResponse{
 		Provider:  credentialProvider,
-		URL:       qrDataURL,
+		URL:       loginURL,
 		State:     state,
 		ExpiresAt: expires.UTC(),
 		Metadata: map[string]any{
 			"site":        site,
-			"qr_base64":   base64.StdEncoding.EncodeToString(png),
+			"qr_base64":   qrBase64,
 			"qr_mime":     "image/png",
 			"poll_hint":   "scan with the mobile app",
 			"expires_sec": int(flowsTTL / time.Second),
@@ -641,9 +656,15 @@ func autoOpenBrowser(metadata map[string]any) bool {
 	}
 	for _, key := range []string{"browser", "browser_name", "browserName"} {
 		if value, ok := metadata[key]; ok {
-			switch strings.ToLower(strings.TrimSpace(fmt.Sprintf("%v", value))) {
+			preference := strings.TrimSpace(fmt.Sprintf("%v", value))
+			if preference == "" || preference == "<nil>" {
+				continue
+			}
+			switch strings.ToLower(preference) {
 			case "none", "manual", "link", "不自动打开":
 				return false
+			default:
+				return true
 			}
 		}
 	}

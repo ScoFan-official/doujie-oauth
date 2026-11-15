@@ -207,7 +207,7 @@ func TestStartLoginGlobalUsesDolaFlow(t *testing.T) {
 	if !strings.Contains(sender.requests[2].Headers.Get("Cookie"), "passport_csrf_token=csrf") {
 		t.Fatalf("CSRF cookie not forwarded: %q", sender.requests[2].Headers.Get("Cookie"))
 	}
-	if !strings.HasPrefix(resp.URL, "data:image/png;base64,") {
+	if !strings.Contains(resp.URL, "/qr.html#") {
 		t.Fatalf("QR URL = %q", resp.URL)
 	}
 	if resp.Metadata["qr_base64"] == "" {

@@ -66,8 +66,10 @@ location.
 
 Browser launch follows the plugin/software settings:
 
-- `auto_open_browser: false` (or OAuth metadata `auto_open=false`) does not open
-  a browser; the plugin returns a QR login response instead.
+- `auto_open_browser` defaults to `false`: a normal login never launches a browser and
+  returns a QR login response instead. Set it to `true` to opt in.
+- An explicit OAuth metadata `browser` value (for example `chrome` or `edge`) enables
+  browser sign-in; `auto_open=false` or `browser=none` keeps the flow headless.
 - `browser: auto|chrome|edge|<absolute path>` selects the browser to launch.
   OAuth metadata `browser`, `browser_name`, `browser_path`, or `browser_executable`
   takes precedence when the host supplies it.

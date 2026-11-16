@@ -15,6 +15,7 @@ const (
 	entryID              = "doubao"
 	internationalEntryID = "dola"
 	defaultBotID         = "7234781073513644036"
+	modelSelectionBotID  = "7338286299411103781"
 )
 
 type credential struct {

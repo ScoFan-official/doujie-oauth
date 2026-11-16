@@ -8,7 +8,7 @@ import (
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/pluginapi"
 )
 
-var pluginVersion = "0.2.7"
+var pluginVersion = "0.2.8"
 
 type rpcAuthStart struct {
 	pluginapi.AuthLoginStartRequest
@@ -171,13 +171,11 @@ func handleMethod(method string, raw []byte) (any, error) {
 		if err := unmarshal(raw, &req); err != nil {
 			return nil, err
 		}
-		var persisted struct {
-			Type string `json:"type"`
-		}
-		if json.Unmarshal(req.StorageJSON, &persisted) != nil || persisted.Type != credentialProvider {
+		c, err := readCredential(req.StorageJSON)
+		if err != nil {
 			return nil, pluginabi.NewError("invalid_auth", "invalid credential", 401)
 		}
-		return pluginapi.ModelResponse{Provider: credentialProvider, Models: staticModels()}, nil
+		return pluginapi.ModelResponse{Provider: credentialProvider, Models: modelsForCredential(c)}, nil
 	case "executor.execute":
 		var req rpcExecution
 		if err := unmarshal(raw, &req); err != nil {

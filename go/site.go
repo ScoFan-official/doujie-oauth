@@ -80,3 +80,13 @@ func (c credential) botID() string {
 	}
 	return cfg.BotID
 }
+
+func (c credential) botIDForModel(model string) string {
+	cfg := getConfig()
+	if c.site() == siteCN && cfg.BotID == defaultBotID {
+		if _, ok := selectionForModel(model); ok {
+			return modelSelectionBotID
+		}
+	}
+	return c.botID()
+}

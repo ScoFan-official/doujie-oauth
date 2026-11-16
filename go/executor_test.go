@@ -49,6 +49,25 @@ func TestConcurrencyGateAppliesConfigUpdates(t *testing.T) {
 	releaseFirst()
 }
 
+func TestModelUnavailableErrorClassification(t *testing.T) {
+	for _, message := range []string{
+		"model not available for this account",
+		"unsupported model",
+		"该模型未开通",
+	} {
+		err := upstreamError(http.StatusBadRequest, []byte(`{"message":"`+message+`"}`))
+		typed, ok := err.(*pluginabi.Error)
+		if !ok || typed.Code != "model_unavailable" || typed.HTTPStatus != http.StatusBadRequest || typed.Retryable {
+			t.Fatalf("unexpected model error for %q: %#v", message, err)
+		}
+	}
+	err := upstreamFailureError("model_not_found")
+	typed, ok := err.(*pluginabi.Error)
+	if !ok || typed.Code != "model_unavailable" {
+		t.Fatalf("stream model error not classified: %#v", err)
+	}
+}
+
 func TestQuotaFailureClassification(t *testing.T) {
 	for _, message := range []string{
 		"insufficient_quota",

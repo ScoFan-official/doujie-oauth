@@ -109,7 +109,16 @@ The plugin needs no local callback listener and no separate browser process.
 | `doubao-seed-1.6` | 豆姐 Seed 1.6 | 256k / 32k |
 | `doubao-seed-1.6-thinking` | 豆姐 Seed 1.6 思考 | 256k / 32k |
 | `doubao-seed-1.6-flash` | 豆姐 Seed 1.6 Flash | 256k / 32k |
-| `doubao-pro` | 豆姐 Pro | 128k / 16k |
+| `doubao-pro` | 豆姐 Pro | 256k / 32k |
+| `doubao-2.1-lite` | 豆姐 2.1 Lite | 256k / 32k |
+| `doubao-2.1-pro` | 豆姐 2.1 Pro | 256k / 32k |
+| `deepseek-v4.1-flash` | DeepSeek V4.1 Flash | 300k / 32k |
+| `deepseek-v4-pro` | DeepSeek V4 Pro | 300k / 32k |
+| `kimi-k3.1-pro` | Kimi K3.1 Pro | 256k / 32k |
+| `kimi-k3.1-pro-high-speed` | Kimi K3.1 Pro High Speed | 256k / 32k |
+| `kimi-k3` | Kimi K3 | 256k / 32k |
+| `glm-5.3` | GLM 5.3 | 300k / 32k |
+| `glm-5.3-flash` | GLM 5.3 Flash | 300k / 32k |
 | `doubao-video` | 豆姐视频（自动） | 8k / 2k |
 | `seedance-2.5` | Seedance 2.5 | 8k / 2k |
 | `seedance-2.0` | Seedance 2.0 | 8k / 2k |
@@ -118,6 +127,24 @@ The plugin needs no local callback listener and no separate browser process.
 
 Model IDs containing `think` or `reason` enable deep thinking automatically;
 `deep_think: true` forces it globally.
+
+Domestic text models map to the Doubao desktop model-menu keys: `doubao` to
+Auto (`9`), `doubao-pro` to Doubao 2.1 Pro (`5`), and
+`doubao-seed-2.0-lite` to Doubao 2.1 Lite (`seed-lite-7b`). These requests use
+the client `/chat/completion` model-selection protocol; `endpoint: samantha`
+only affects requests without a model-menu mapping.
+
+The newer Work-mode third-party models use the same menu protocol for DeepSeek,
+Kimi and GLM. Availability, price multipliers and permission are controlled by
+the Doubao account, subscription and server-side rollout. The plugin only maps
+requests to the corresponding `model_item_key`; it does not bypass upstream
+subscription or quota checks.
+DeepSeek and GLM gateway keys use a `person-` prefix, while Kimi keys use the
+`kimi-` prefix; gateway models share `item_id=10001`.
+If an account was not granted a model, the plugin returns `400 model_unavailable`
+instead of reporting a generic upstream failure. The Dola catalog exposes only
+the domestically compatible `doubao` text model so Work-mode models are not
+advertised to accounts that cannot use them.
 
 ### Video models
 

@@ -94,7 +94,16 @@ OAuth 发起和轮询使用 CPA 原生受认证管理 API，公共插件资源�
 | `doubao-seed-1.6` | 豆姐 Seed 1.6 | 256k / 32k |
 | `doubao-seed-1.6-thinking` | 豆姐 Seed 1.6 思考 | 256k / 32k |
 | `doubao-seed-1.6-flash` | 豆姐 Seed 1.6 Flash | 256k / 32k |
-| `doubao-pro` | 豆姐 Pro | 128k / 16k |
+| `doubao-pro` | 豆姐 Pro | 256k / 32k |
+| `doubao-2.1-lite` | 豆姐 2.1 Lite | 256k / 32k |
+| `doubao-2.1-pro` | 豆姐 2.1 Pro | 256k / 32k |
+| `deepseek-v4.1-flash` | DeepSeek V4.1 Flash | 300k / 32k |
+| `deepseek-v4-pro` | DeepSeek V4 Pro | 300k / 32k |
+| `kimi-k3.1-pro` | Kimi K3.1 Pro | 256k / 32k |
+| `kimi-k3.1-pro-high-speed` | Kimi K3.1 Pro 高速 | 256k / 32k |
+| `kimi-k3` | Kimi K3 | 256k / 32k |
+| `glm-5.3` | GLM 5.3 | 300k / 32k |
+| `glm-5.3-flash` | GLM 5.3 Flash | 300k / 32k |
 | `doubao-video` | 豆姐视频（自动） | 8k / 2k |
 | `seedance-2.5` | Seedance 2.5 | 8k / 2k |
 | `seedance-2.0` | Seedance 2.0 | 8k / 2k |
@@ -103,6 +112,20 @@ OAuth 发起和轮询使用 CPA 原生受认证管理 API，公共插件资源�
 
 模型标识包含 `think` 或 `reason` 时自动开启深度思考；也可用 `deep_think: true`
 强制全局开启。
+
+国内版文本模型会映射到豆包桌面客户端的模型菜单键：`doubao` → 自动（`9`），
+`doubao-pro` → 豆包 2.1 Pro（`5`），`doubao-seed-2.0-lite` → 豆包 2.1 Lite
+（`seed-lite-7b`）。这些请求会自动使用客户端的 `/chat/completion` 模型选择协议；
+`endpoint: samantha` 只影响没有模型菜单映射的请求。
+
+新版工作模式的第三方模型也使用同一套菜单协议，包括 DeepSeek、Kimi 和 GLM。
+模型是否可见、价格倍率以及是否允许调用由豆包账号、套餐和服务端灰度决定；插件只负责
+把请求映射到对应的 `model_item_key`，不会绕过上游的订阅或额度校验。
+DeepSeek 和 GLM 的网关键带 `person-` 前缀，Kimi 使用 `kimi-` 前缀；第三方网关模型
+统一使用 `item_id=10001`。
+如果当前账号没有下发某个模型，插件会返回 `400 model_unavailable`，而不是把它误报成
+上游故障；Dola 国际版只展示国内版兼容的 `doubao` 文本模型，避免把国内工作模式模型
+错误暴露给不支持的账号。
 
 ### 视频模型
 

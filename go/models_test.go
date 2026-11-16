@@ -34,3 +34,14 @@ func TestStaticModelsThinkingLevels(t *testing.T) {
 		t.Fatalf("video model must not expose thinking levels: %+v", video)
 	}
 }
+
+func TestModelsForCredentialFiltersGlobalCatalog(t *testing.T) {
+	cn := modelsForCredential(credential{Type: credentialProvider, Site: siteCN})
+	if len(cn) < 10 {
+		t.Fatalf("domestic catalog unexpectedly short: %d", len(cn))
+	}
+	global := modelsForCredential(credential{Type: credentialProvider, Site: siteGlobal})
+	if len(global) != 1 || global[0].ID != "doubao" {
+		t.Fatalf("global catalog should expose only the domestic-compatible text model: %+v", global)
+	}
+}

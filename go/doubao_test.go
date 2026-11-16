@@ -68,6 +68,19 @@ func TestCollectDoubao(t *testing.T) {
 	}
 }
 
+func TestParseChatEventSeparatesThinkingFromAnswer(t *testing.T) {
+	inThinking := false
+	thinking := []byte(`{"content":{"content_block":[{"block_type":10040,"content":{"thinking_block":{"finish_title":"思考"}}}]},"content_type":9999}`)
+	if _, ok := parseChatEvent(thinking, &inThinking); !ok || !inThinking {
+		t.Fatalf("thinking block did not enable thinking: ok=%v inThinking=%v", ok, inThinking)
+	}
+	answer := []byte(`{"message_id":"m","patch_op":[{"patch_value":{"content_block":[{"block_type":10000,"content":{"text_block":{"text":"1"}}}]}}]}`)
+	msg, ok := parseChatEvent(answer, &inThinking)
+	if !ok || msg.Text != "1" || msg.Think != "" || inThinking {
+		t.Fatalf("unexpected answer: %+v ok=%v inThinking=%v", msg, ok, inThinking)
+	}
+}
+
 func TestFlattenConversation(t *testing.T) {
 	body := anthropicRequest{
 		System: json.RawMessage(`"你是助手"`),

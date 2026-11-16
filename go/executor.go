@@ -335,6 +335,8 @@ func upstreamError(status int, body []byte) error {
 		return quotaFailureError(message)
 	case quotaExhaustedMessage(message):
 		return quotaFailureError(message)
+	case modelUnavailableMessage(message):
+		return modelUnavailableError(message)
 	case status >= 500:
 		return pluginabi.NewError("upstream_error", "Doubao upstream failed: "+message, 502)
 	case status == 0:
@@ -348,6 +350,9 @@ func upstreamFailureError(message string) error {
 	message = sanitizeUpstream(message)
 	if quotaExhaustedMessage(message) {
 		return quotaFailureError(message)
+	}
+	if modelUnavailableMessage(message) {
+		return modelUnavailableError(message)
 	}
 	return pluginabi.NewError("upstream_error", "Doubao upstream failed: "+message, 502)
 }
@@ -385,6 +390,46 @@ func quotaExhaustedMessage(message string) bool {
 		}
 	}
 	return false
+}
+
+func modelUnavailableMessage(message string) bool {
+	text := strings.ToLower(strings.TrimSpace(message))
+	if text == "" {
+		return false
+	}
+	for _, marker := range []string{
+		"model not found",
+		"model_not_found",
+		"unsupported model",
+		"model unavailable",
+		"model is not available",
+		"model not available",
+		"model_not_exist",
+		"invalid model",
+		"not entitled",
+		"not subscribed",
+		"no model permission",
+		"无权使用该模型",
+		"模型不存在",
+		"模型不可用",
+		"模型未开通",
+		"不支持该模型",
+		"该模型暂不支持",
+		"权限不足",
+	} {
+		if strings.Contains(text, marker) {
+			return true
+		}
+	}
+	return false
+}
+
+func modelUnavailableError(message string) error {
+	return pluginabi.NewError(
+		"model_unavailable",
+		"Doubao account does not expose this model; choose another model or enable it in Doubao: "+sanitizeUpstream(message),
+		http.StatusBadRequest,
+	)
 }
 
 func upstreamMessage(body []byte) string {

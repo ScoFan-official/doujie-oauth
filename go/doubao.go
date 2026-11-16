@@ -9,7 +9,9 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
+	"time"
 	"unicode/utf8"
 
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/pluginabi"
@@ -69,19 +71,42 @@ func buildRequest(req pluginapi.ExecutorRequest, sender httpSender) (preparedReq
 	cfg := getConfig()
 	profile := c.profile()
 	deep := cfg.DeepThink || wantsDeepThink(model) || requestDeep
+	selection, hasSelection := selectionForModel(model)
+	if c.site() != siteCN {
+		hasSelection = false
+	}
+	deepValue := "0"
+	if hasSelection {
+		deepValue = selection.ItemID
+		if selection.ItemID != "0" {
+			deep = true
+		}
+	}
+	if cfg.DeepThink || wantsDeepThink(model) || requestDeep {
+		if deepValue == "0" || deepValue == "" {
+			deepValue = "1"
+		}
+		deep = true
+	}
+	var selected *modelSelection
+	if hasSelection {
+		selected = &selection
+	}
 	params := securityParams(c, model)
 	endpoint := cfg.Endpoint
-	if endpoint != "chat" {
+	if hasSelection {
+		endpoint = "chat"
+	} else if endpoint != "chat" {
 		endpoint = "samantha"
 	}
 	var path string
 	var sent map[string]any
 	if endpoint == "chat" {
 		path = "/chat/completion?"
-		sent = chatCompletionPayload(prompt, deep, c.FP, c.botID())
+		sent = chatCompletionPayload(prompt, c.botIDForModel(model), selected, deepValue)
 	} else {
 		path = "/samantha/chat/completion?"
-		sent = samanthaPayload(prompt, deep, c.botID())
+		sent = samanthaPayload(prompt, deep, c.botIDForModel(model), selected, deepValue)
 	}
 	target := profile.Root + path + params.Encode()
 	raw, err := json.Marshal(sent)
@@ -388,14 +413,18 @@ func asInt(v any) int {
 	}
 }
 
-func samanthaPayload(prompt string, deep bool, botID string) map[string]any {
+func samanthaPayload(prompt string, deep bool, botID string, selection *modelSelection, deepValue string) map[string]any {
+	message := map[string]any{
+		"content":      string(mustJSON(map[string]any{"text": prompt})),
+		"content_type": 2001,
+		"attachments":  []any{},
+		"references":   []any{},
+	}
+	if ext := samanthaModelExt(selection, deepValue); ext != nil {
+		message["ext"] = ext
+	}
 	return map[string]any{
-		"messages": []any{map[string]any{
-			"content":      string(mustJSON(map[string]any{"text": prompt})),
-			"content_type": 2001,
-			"attachments":  []any{},
-			"references":   []any{},
-		}},
+		"messages": []any{message},
 		"completion_option": map[string]any{
 			"is_regen":                 false,
 			"with_suggest":             false,
@@ -407,7 +436,7 @@ func samanthaPayload(prompt string, deep bool, botID string) map[string]any {
 			"memory_type":              2,
 			"message_from":             0,
 			"use_deep_think":           deep,
-			"use_auto_cot":             deep,
+			"use_auto_cot":             (selection == nil && deep) || deepValue == "2",
 			"resend_for_regen":         false,
 			"enable_commerce_credit":   false,
 		},
@@ -418,7 +447,7 @@ func samanthaPayload(prompt string, deep bool, botID string) map[string]any {
 	}
 }
 
-func chatCompletionPayload(prompt string, deep bool, fp string, botID string) map[string]any {
+func chatCompletionPayload(prompt string, botID string, selection *modelSelection, deepValue string) map[string]any {
 	textBlock := map[string]any{
 		"block_type": 10000,
 		"content": map[string]any{
@@ -428,9 +457,120 @@ func chatCompletionPayload(prompt string, deep bool, fp string, botID string) ma
 		"block_id":      randomUUID(),
 		"parent_id":     "",
 		"meta_info":     []any{},
+		"extra_info":    map[string]any{},
 		"append_fields": []any{},
 		"is_finish":     true,
 		"patch_type":    2,
+	}
+	now := time.Now()
+	localMessageID := randomUUID()
+	agentTaskParam := map[string]any{
+		"runtime_type":    1,
+		"folder_name":     "",
+		"device_name":     "",
+		"workspace":       "",
+		"local_app_id":    "",
+		"local_device_id": "",
+	}
+	generalTaskParam := map[string]any{
+		"action":                  0,
+		"thread_local_message_id": []any{localMessageID},
+		"project_id":              "",
+		"runtime_type":            1,
+		"agent_task_param":        agentTaskParam,
+		"server_do_compare":       true,
+	}
+	conversationInitOption := map[string]any{
+		"project_id":            "",
+		"need_ack_conversation": true,
+	}
+	agentMode := 2
+	conversationMode := 1
+	if selection != nil {
+		agentMode = selection.AgentMode
+		if parsed, err := strconv.Atoi(selection.ConversationMode); err == nil {
+			conversationMode = parsed
+		}
+	}
+	ext := map[string]any{
+		"general_task_param":            string(mustJSON(generalTaskParam)),
+		"use_deep_think":                deepValue,
+		"agent_mode":                    strconv.Itoa(agentMode),
+		"conversation_init_option":      string(mustJSON(conversationInitOption)),
+		"sub_conv_firstmet_type":        "1",
+		"collection_id":                 "",
+		"is_finish":                     "1",
+		"commerce_credit_config_enable": "0",
+	}
+	option := map[string]any{
+		"send_message_scene":        "",
+		"create_time_ms":            now.UnixMilli(),
+		"collect_id":                "",
+		"is_audio":                  false,
+		"answer_with_suggest":       false,
+		"tts_switch":                false,
+		"need_deep_think":           deepThinkValue(selection, deepValue),
+		"agent_mode":                agentMode,
+		"click_clear_context":       false,
+		"from_suggest":              false,
+		"is_regen":                  false,
+		"is_replace":                false,
+		"is_from_click_option":      false,
+		"is_from_click_softlink":    false,
+		"disable_sse_cache":         false,
+		"select_text_action":        "",
+		"is_select_text":            false,
+		"resend_for_regen":          false,
+		"scene_type":                0,
+		"unique_key":                randomUUID(),
+		"start_seq":                 0,
+		"need_create_conversation":  true,
+		"conversation_init_option":  conversationInitOption,
+		"regen_query_id":            []any{},
+		"edit_query_id":             []any{},
+		"regen_instruction":         "",
+		"no_replace_for_regen":      false,
+		"message_from":              0,
+		"shared_app_name":           "",
+		"shared_app_id":             "",
+		"sse_recv_event_options":    map[string]any{"support_chunk_delta": true},
+		"support_lazy_fetch_stream": true,
+		"is_ai_playground":          false,
+		"is_old_user":               true,
+		"general_task_param":        generalTaskParam,
+		"recovery_option": map[string]any{
+			"is_recovery":            false,
+			"req_create_time_sec":    now.Unix(),
+			"append_sse_event_scene": 0,
+		},
+		"message_storage_type":        0,
+		"related_deleted_message_ids": map[string]any{},
+		"connector_info_list":         []any{},
+		"conversation_mode":           conversationMode,
+	}
+	if selection != nil {
+		option["conversation_init_ext"] = map[string]any{
+			"agent_task_param": string(mustJSON(agentTaskParam)),
+			"model_item_key":   selection.ItemKey,
+			"reasoning_effort": strconv.Itoa(selection.ReasoningEffort),
+			"mode_id":          selection.ModeID,
+		}
+		option["model_config"] = map[string]any{
+			"model_item_key":     selection.ItemKey,
+			"model_extra_params": selection.ExtraParams,
+			"reasoning_effort":   selection.ReasoningEffort,
+		}
+		option["aggregate_params"] = map[string]any{
+			"mention_skill_list":  "[]",
+			"mention_plugin_list": "[]",
+			"mention_ext":         "[{}]",
+			"conversation_mode":   selection.ConversationMode,
+			"mode_id":             selection.ModeID,
+			"model_item_key":      selection.ItemKey,
+			"agent_mode":          strconv.Itoa(selection.AgentMode),
+			"reasoning_effort":    strconv.Itoa(selection.ReasoningEffort),
+			"provider_id":         "",
+		}
 	}
 	return map[string]any{
 		"client_meta": map[string]any{
@@ -439,51 +579,46 @@ func chatCompletionPayload(prompt string, deep bool, fp string, botID string) ma
 			"bot_id":                botID,
 			"last_section_id":       "",
 			"last_message_index":    0,
+			"local_permissions": []any{
+				map[string]any{"permission_name": "ACCESS_COARSE_LOCATION", "status": 3},
+				map[string]any{"permission_name": "ACCESS_FINE_LOCATION", "status": 3},
+				map[string]any{"permission_name": "ACCESS_BACKGROUND_LOCATION", "status": 3},
+			},
 		},
 		"messages": []any{map[string]any{
-			"local_message_id": randomUUID(),
+			"local_message_id": localMessageID,
 			"content_block":    []any{textBlock},
 			"message_status":   0,
 		}},
-		"option": map[string]any{
-			"send_message_scene":       "",
-			"create_time_ms":           0,
-			"collect_id":               "",
-			"is_audio":                 false,
-			"answer_with_suggest":      false,
-			"tts_switch":               false,
-			"need_deep_think":          btoi(deep),
-			"click_clear_context":      false,
-			"from_suggest":             false,
-			"is_regen":                 false,
-			"is_replace":               false,
-			"disable_sse_cache":        false,
-			"select_text_action":       "",
-			"resend_for_regen":         false,
-			"scene_type":               0,
-			"unique_key":               randomUUID(),
-			"start_seq":                0,
-			"need_create_conversation": true,
-			"conversation_init_option": map[string]any{"need_ack_conversation": true},
-			"regen_query_id":           []any{},
-			"edit_query_id":            []any{},
-			"regen_instruction":        "",
-			"no_replace_for_regen":     false,
-			"message_from":             0,
-			"shared_app_name":          "",
-			"action_bar_skill_id":      0,
-			"sse_recv_event_options":   map[string]any{"support_chunk_delta": true},
-			"is_ai_playground":         false,
-		},
-		"chat_ability": map[string]any{},
-		"ext": map[string]any{
-			"use_deep_think":                btoi(deep),
-			"fp":                            fp,
-			"use_submit_pipeline":           "1",
-			"commerce_credit_config_enable": "0",
-			"sub_conv_firstmet_type":        "1",
-		},
+		"option":       option,
+		"user_context": []any{},
+		"ext":          ext,
 	}
+}
+
+func samanthaModelExt(selection *modelSelection, deepValue string) map[string]any {
+	if selection == nil {
+		return nil
+	}
+	return map[string]any{
+		"model_item_key":     selection.ItemKey,
+		"mode_id":            selection.ModeID,
+		"agent_mode":         strconv.Itoa(selection.AgentMode),
+		"model_extra_params": string(mustJSON(selection.ExtraParams)),
+		"reasoning_effort":   strconv.Itoa(selection.ReasoningEffort),
+		"use_deep_think":     deepValue,
+	}
+}
+
+func deepThinkValue(selection *modelSelection, deepValue string) int {
+	if selection == nil {
+		return btoi(deepValue != "0")
+	}
+	value, err := strconv.Atoi(selection.ItemID)
+	if err != nil || value < 0 {
+		return 0
+	}
+	return value
 }
 
 func btoi(v bool) int {
@@ -539,6 +674,7 @@ func parseChatEvent(data []byte, inThinking *bool) (doubaoMessage, bool) {
 		case 10040:
 			*inThinking = true
 		case 10000:
+			*inThinking = false
 			content, _ := block["content"].(map[string]any)
 			textBlock, _ := content["text_block"].(map[string]any)
 			text, _ := textBlock["text"].(string)

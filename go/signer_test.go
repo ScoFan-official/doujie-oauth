@@ -95,7 +95,7 @@ func TestBuildRequest(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if plan.HTTP.Method != http.MethodPost || !strings.Contains(plan.HTTP.URL, "/samantha/chat/completion?") || !strings.Contains(plan.HTTP.URL, "aid=582478") {
+	if plan.HTTP.Method != http.MethodPost || !strings.Contains(plan.HTTP.URL, "/chat/completion?") || !strings.Contains(plan.HTTP.URL, "aid=582478") {
 		t.Fatalf("unexpected URL: %s", plan.HTTP.URL)
 	}
 	if strings.Contains(plan.HTTP.URL, "msToken") {
@@ -109,6 +109,143 @@ func TestBuildRequest(t *testing.T) {
 	}
 	if !strings.Contains(string(plan.HTTP.Body), "你好") || !strings.Contains(string(plan.HTTP.Body), "bot_id") {
 		t.Fatalf("unexpected body: %s", plan.HTTP.Body)
+	}
+}
+
+func TestBuildRequestUsesDoubaoModelRoutes(t *testing.T) {
+	if err := configure(nil); err != nil {
+		t.Fatal(err)
+	}
+	c := credential{Type: credentialProvider, Cookies: map[string]string{"sessionid": "s"}, DeviceID: "7000000000000000", WebID: "7600000000000000000", FP: "verify_x"}
+	storage, _ := json.Marshal(c)
+	cases := []struct {
+		model    string
+		key      string
+		deep     string
+		wantDeep int
+	}{
+		{"doubao", "9", "9", 9},
+		{"doubao-pro", "5", "5", 5},
+	}
+	for _, tc := range cases {
+		t.Run(tc.model, func(t *testing.T) {
+			payload := []byte(`{"model":"` + tc.model + `","messages":[{"role":"user","content":"hello"}]}`)
+			plan, err := buildRequest(pluginapi.ExecutorRequest{Payload: payload, Model: tc.model, StorageJSON: storage}, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var body struct {
+				ClientMeta struct {
+					BotID string `json:"bot_id"`
+				} `json:"client_meta"`
+				Option struct {
+					NeedDeepThink       int            `json:"need_deep_think"`
+					AgentMode           int            `json:"agent_mode"`
+					ModelConfig         map[string]any `json:"model_config"`
+					Aggregate           map[string]any `json:"aggregate_params"`
+					ConversationInitExt map[string]any `json:"conversation_init_ext"`
+				} `json:"option"`
+				Ext map[string]any `json:"ext"`
+			}
+			if err := json.Unmarshal(plan.HTTP.Body, &body); err != nil {
+				t.Fatal(err)
+			}
+			if body.ClientMeta.BotID != modelSelectionBotID {
+				t.Fatalf("bot = %q", body.ClientMeta.BotID)
+			}
+			if !strings.Contains(plan.HTTP.URL, "/chat/completion?") {
+				t.Fatalf("selection model used wrong endpoint: %s", plan.HTTP.URL)
+			}
+			if body.Option.ModelConfig["model_item_key"] != tc.key || body.Ext["use_deep_think"] != tc.deep {
+				t.Fatalf("unexpected model selection: config=%#v ext=%#v", body.Option.ModelConfig, body.Ext)
+			}
+			if body.Option.Aggregate["mode_id"] != "3" || body.Option.Aggregate["agent_mode"] != "1" {
+				t.Fatalf("unexpected mode: %#v", body.Option.Aggregate)
+			}
+			params := body.Option.ModelConfig["model_extra_params"].(map[string]any)
+			if body.Option.ModelConfig["reasoning_effort"] != float64(5) || params["total_window_size"] != "256000" {
+				t.Fatalf("unexpected effort/params: %#v", body.Option.ModelConfig)
+			}
+			if body.Option.NeedDeepThink != tc.wantDeep || body.Option.AgentMode != 1 {
+				t.Fatalf("unexpected option: %#v", body.Option)
+			}
+		})
+	}
+}
+
+func TestThirdPartyModelSelections(t *testing.T) {
+	cases := []struct {
+		model  string
+		key    string
+		itemID string
+		window string
+	}{
+		{"doubao-2.1-lite", "seed-lite-7b", "10001", "256000"},
+		{"deepseek-v4.1-flash", "person-deepseek-v4-1-flash-261017", "10001", "300000"},
+		{"deepseek-v4-pro", "deepseek-v4-pro-ga-260813", "10001", "300000"},
+		{"kimi-k3.1-pro", "kimi-k3-1-pro", "10001", "256000"},
+		{"kimi-k3.1-pro-high-speed", "kimi-k3-1-pro-highspeed", "10001", "256000"},
+		{"kimi-k3", "kimi-k3", "10001", "256000"},
+		{"glm-5.3", "person-glm-5-3-261111", "10001", "300000"},
+		{"glm-5.3-flash", "person-glm-5-3-flash-261111", "10001", "300000"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.model, func(t *testing.T) {
+			selection, ok := selectionForModel(tc.model)
+			if !ok {
+				t.Fatalf("model %q is not selectable", tc.model)
+			}
+			if selection.ItemKey != tc.key || selection.ItemID != tc.itemID {
+				t.Fatalf("unexpected selection: %+v", selection)
+			}
+			if selection.ModeID != "3" || selection.AgentMode != 1 || selection.ConversationMode != "2" || selection.ReasoningEffort != 5 {
+				t.Fatalf("unexpected work-mode routing: %+v", selection)
+			}
+			if selection.ExtraParams["total_window_size"] != tc.window {
+				t.Fatalf("unexpected context params: %#v", selection.ExtraParams)
+			}
+		})
+	}
+}
+
+func TestChatEndpointCarriesModelConfig(t *testing.T) {
+	if err := configure([]byte("endpoint: chat")); err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = configure(nil) }()
+	c := credential{Type: credentialProvider, Cookies: map[string]string{"sessionid": "s"}, DeviceID: "7000000000000000", WebID: "7600000000000000000", FP: "verify_x"}
+	storage, _ := json.Marshal(c)
+	payload := []byte(`{"model":"doubao-pro","messages":[{"role":"user","content":"hello"}]}`)
+	plan, err := buildRequest(pluginapi.ExecutorRequest{Payload: payload, Model: "doubao-pro", StorageJSON: storage}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(plan.HTTP.URL, "/chat/completion?") {
+		t.Fatalf("unexpected URL: %s", plan.HTTP.URL)
+	}
+	var body struct {
+		Option struct {
+			NeedDeepThink int            `json:"need_deep_think"`
+			AgentMode     int            `json:"agent_mode"`
+			ModelConfig   map[string]any `json:"model_config"`
+			Aggregate     map[string]any `json:"aggregate_params"`
+		} `json:"option"`
+	}
+	if err := json.Unmarshal(plan.HTTP.Body, &body); err != nil {
+		t.Fatal(err)
+	}
+	if body.Option.ModelConfig["model_item_key"] != "5" || body.Option.ModelConfig["reasoning_effort"] != float64(5) {
+		t.Fatalf("unexpected model_config: %#v", body.Option.ModelConfig)
+	}
+	params := body.Option.ModelConfig["model_extra_params"].(map[string]any)
+	if params["total_window_size"] != "256000" {
+		t.Fatalf("unexpected model_extra_params: %#v", params)
+	}
+	if body.Option.Aggregate["mode_id"] != "3" || body.Option.Aggregate["agent_mode"] != "1" || body.Option.Aggregate["conversation_mode"] != "2" {
+		t.Fatalf("unexpected aggregate_params: %#v", body.Option.Aggregate)
+	}
+	if body.Option.NeedDeepThink != 5 || body.Option.AgentMode != 1 {
+		t.Fatalf("unexpected option: %#v", body.Option)
 	}
 }
 

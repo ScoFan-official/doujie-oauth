@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"path/filepath"
 	goruntime "runtime"
 	"strconv"
 	"strings"
@@ -625,7 +624,7 @@ func workModeAgentTaskParam(c credential) map[string]any {
 	}
 	folderName := ""
 	if workspace != "" {
-		folderName = filepath.Base(filepath.Clean(workspace))
+		folderName = workspaceFolderName(workspace)
 	}
 	localAppID := strings.TrimSpace(cfg.LocalAppID)
 	if localAppID == "" {
@@ -641,6 +640,15 @@ func workModeAgentTaskParam(c credential) map[string]any {
 		"sandbox_auth_type": sandboxAuthTypeValue(cfg.SandboxAuthType),
 	}
 	return param
+}
+
+func workspaceFolderName(workspace string) string {
+	normalized := strings.ReplaceAll(strings.TrimSpace(workspace), "\\", "/")
+	normalized = strings.TrimRight(normalized, "/")
+	if index := strings.LastIndex(normalized, "/"); index >= 0 {
+		return normalized[index+1:]
+	}
+	return normalized
 }
 
 func sandboxAuthTypeValue(value string) int {

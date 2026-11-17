@@ -176,3 +176,18 @@ func TestUnknownModelIsRejectedInsteadOfFallingBack(t *testing.T) {
 		t.Fatalf("unexpected error: %#v", apiErr)
 	}
 }
+
+func TestWorkspaceFolderNameHandlesBothSeparators(t *testing.T) {
+	cases := map[string]string{
+		`D:\WenPaul\Documents\豆包REA`: "豆包REA",
+		`C:/Users/demo/project/`:     "project",
+		`/home/user/work`:            "work",
+		`plain`:                      "plain",
+		``:                           "",
+	}
+	for input, want := range cases {
+		if got := workspaceFolderName(input); got != want {
+			t.Fatalf("workspaceFolderName(%q) = %q, want %q", input, got, want)
+		}
+	}
+}

@@ -26,6 +26,12 @@ type modelSelection struct {
 	ExtraParams      map[string]any
 }
 
+// isWorkMode reports whether the selection belongs to the MOA work-task menu
+// (mode_id=3, agent_mode=1) rather than the ordinary chat menu.
+func (s modelSelection) isWorkMode() bool {
+	return s.ModeID == "3" && s.AgentMode == 1
+}
+
 var doubaoModels = []modelSpec{
 	{ID: "doubao", Display: "豆姐 Auto", Context: 256000, Output: 32000},
 	{ID: "doubao-seed-2.0", Display: "豆姐 Seed 2.0", Context: 256000, Output: 32000},
@@ -111,9 +117,9 @@ func selectionForModel(model string) (modelSelection, bool) {
 			ReasoningEffort:  5,
 			ExtraParams:      map[string]any{"memory_profile": "300k_230", "total_window_size": "300000"},
 		}, true
-	case "deepseek-v4-pro", "deepseek-v4.1-pro", "deepseek-v4-1-pro", "deepseek-v4-pro-ga-260813":
+	case "deepseek-v4-pro", "deepseek-v4.1-pro", "deepseek-v4-1-pro", "deepseek-v4-pro-ga-260813", "person-deepseek-v4-pro-ga-260813":
 		return modelSelection{
-			ItemKey:          "deepseek-v4-pro-ga-260813",
+			ItemKey:          "person-deepseek-v4-pro-ga-260813",
 			ItemID:           "10001",
 			ModeID:           "3",
 			ConversationMode: "2",
@@ -121,35 +127,35 @@ func selectionForModel(model string) (modelSelection, bool) {
 			ReasoningEffort:  5,
 			ExtraParams:      map[string]any{"memory_profile": "300k_230", "total_window_size": "300000"},
 		}, true
-	case "kimi-k3.1-pro", "kimi-k3-1-pro":
+	case "kimi-k3.1-pro", "kimi-k3-1-pro", "person-kimi-k3-1-pro-261111":
 		return modelSelection{
-			ItemKey:          "kimi-k3-1-pro",
+			ItemKey:          "person-kimi-k3-1-pro-261111",
 			ItemID:           "10001",
 			ModeID:           "3",
 			ConversationMode: "2",
 			AgentMode:        1,
 			ReasoningEffort:  5,
-			ExtraParams:      map[string]any{"total_window_size": "256000"},
+			ExtraParams:      map[string]any{"memory_profile": "300k_230", "total_window_size": "300000"},
 		}, true
-	case "kimi-k3.1-pro-high-speed", "kimi-k3-1-pro-high-speed", "kimi-k3-1-pro-highspeed":
+	case "kimi-k3.1-pro-high-speed", "kimi-k3-1-pro-high-speed", "kimi-k3-1-pro-highspeed", "person-kimi-k3-1-pro-highspeed-261111":
 		return modelSelection{
-			ItemKey:          "kimi-k3-1-pro-highspeed",
+			ItemKey:          "person-kimi-k3-1-pro-highspeed-261111",
 			ItemID:           "10001",
 			ModeID:           "3",
 			ConversationMode: "2",
 			AgentMode:        1,
 			ReasoningEffort:  5,
-			ExtraParams:      map[string]any{"total_window_size": "256000"},
+			ExtraParams:      map[string]any{"memory_profile": "300k_230", "total_window_size": "300000"},
 		}, true
-	case "kimi-k3":
+	case "kimi-k3", "person-kimi-k3-261111":
 		return modelSelection{
-			ItemKey:          "kimi-k3",
+			ItemKey:          "person-kimi-k3-261111",
 			ItemID:           "10001",
 			ModeID:           "3",
 			ConversationMode: "2",
 			AgentMode:        1,
 			ReasoningEffort:  5,
-			ExtraParams:      map[string]any{"total_window_size": "256000"},
+			ExtraParams:      map[string]any{"memory_profile": "300k_230", "total_window_size": "300000"},
 		}, true
 	case "glm-5.3", "glm-5-3", "person-glm-5-3-261111":
 		return modelSelection{
@@ -207,6 +213,10 @@ func staticModels() []pluginapi.ModelInfo {
 				Levels:         []string{"low", "medium", "high"},
 			}
 		}
+		inputLimit := spec.Context - spec.Output
+		if inputLimit < 1 {
+			inputLimit = spec.Context
+		}
 		out = append(out, pluginapi.ModelInfo{
 			ID:                         spec.ID,
 			Object:                     "model",
@@ -215,7 +225,7 @@ func staticModels() []pluginapi.ModelInfo {
 			Name:                       spec.ID,
 			DisplayName:                spec.Display,
 			ContextLength:              spec.Context,
-			InputTokenLimit:            spec.Context,
+			InputTokenLimit:            inputLimit,
 			MaxCompletionTokens:        spec.Output,
 			OutputTokenLimit:           spec.Output,
 			Version:                    spec.Version,

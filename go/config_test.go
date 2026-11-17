@@ -7,7 +7,7 @@ func TestConfigureDefaults(t *testing.T) {
 		t.Fatal(err)
 	}
 	cfg := getConfig()
-	if cfg.MaxConcurrency != 3 || cfg.BotID != defaultBotID || cfg.Signer != "none" || cfg.AutoOpenBrowser || cfg.Browser != "auto" {
+	if cfg.MaxConcurrency != 3 || cfg.BotID != defaultBotID || cfg.Signer != "none" || cfg.AutoOpenBrowser || cfg.Browser != "auto" || cfg.Runtime != "auto" || cfg.SandboxAuthType != "ask_risky" {
 		t.Fatalf("unexpected defaults: %+v", cfg)
 	}
 }
@@ -53,6 +53,8 @@ func TestConfigureValidation(t *testing.T) {
 		"signer: external",
 		"bot_id: ''",
 		"public_base_url: not-a-url",
+		"runtime: magic",
+		"sandbox_auth_type: magic",
 	}
 	for _, raw := range cases {
 		if err := configure([]byte(raw)); err == nil {

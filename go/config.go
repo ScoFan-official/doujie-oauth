@@ -20,6 +20,11 @@ type config struct {
 	Endpoint        string `yaml:"endpoint"`
 	AutoOpenBrowser bool   `yaml:"auto_open_browser"`
 	Browser         string `yaml:"browser"`
+	Runtime         string `yaml:"runtime"`
+	Workspace       string `yaml:"workspace"`
+	DeviceName      string `yaml:"device_name"`
+	SandboxAuthType string `yaml:"sandbox_auth_type"`
+	LocalAppID      string `yaml:"local_app_id"`
 }
 
 var configMu sync.RWMutex
@@ -35,6 +40,8 @@ func defaults() config {
 		Endpoint:        "samantha",
 		AutoOpenBrowser: false,
 		Browser:         "auto",
+		Runtime:         "auto",
+		SandboxAuthType: "ask_risky",
 	}
 }
 
@@ -98,6 +105,24 @@ func configure(raw []byte) error {
 		if !strings.ContainsAny(c.Browser, `\/:`) {
 			return fmt.Errorf("invalid doubao plugin configuration: browser must be auto, chrome, edge, or an executable path")
 		}
+	}
+	c.Runtime = strings.ToLower(strings.TrimSpace(c.Runtime))
+	if c.Runtime == "" {
+		c.Runtime = "auto"
+	}
+	switch c.Runtime {
+	case "auto", "cloud", "local":
+	default:
+		return fmt.Errorf("invalid doubao plugin configuration: runtime must be auto, cloud, or local")
+	}
+	c.Workspace = strings.TrimSpace(c.Workspace)
+	c.DeviceName = strings.TrimSpace(c.DeviceName)
+	c.LocalAppID = strings.TrimSpace(c.LocalAppID)
+	c.SandboxAuthType = strings.ToLower(strings.TrimSpace(c.SandboxAuthType))
+	switch c.SandboxAuthType {
+	case "", "ask_always", "ask_risky", "always_allow":
+	default:
+		return fmt.Errorf("invalid doubao plugin configuration: sandbox_auth_type must be ask_always, ask_risky, or always_allow")
 	}
 	configMu.Lock()
 	currentConfig = c

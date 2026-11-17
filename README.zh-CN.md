@@ -197,6 +197,9 @@ plugins:
       endpoint: samantha
       signer: none
       max_concurrency: 3
+      runtime: auto
+      # workspace: D:\WenPaul\Documents
+      # sandbox_auth_type: ask_risky
       # public_base_url: https://cpa.example.com
 ```
 
@@ -219,6 +222,11 @@ plugins:
 | `app_version` | 字符串 | `2.1.7` | 国内客户端版本标识 |
 | `auto_open_browser` | 布尔 | `false` | 是否自动打开独立浏览器；默认 `false`，点击登录只返回二维码/链接，不弹浏览器 |
 | `browser` | 字符串 | `auto` | `auto`、`chrome`、`edge`，或浏览器可执行文件绝对路径 |
+| `runtime` | 枚举 | `auto` | `auto`、`cloud`、`local`；仅影响工作任务 |
+| `workspace` | 字符串 | 空 | `runtime: local` 使用的本地目录；`auto` 在设置后自动选本地 |
+| `device_name` | 字符串 | 主机名 | 上报给豆包的本地设备名 |
+| `sandbox_auth_type` | 枚举 | `ask_risky` | `ask_always`、`ask_risky`、`always_allow` |
+| `local_app_id` | 字符串 | 聊天 app id | 覆盖本地任务使用的 app id |
 
 ## 开发
 

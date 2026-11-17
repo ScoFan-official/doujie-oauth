@@ -8,7 +8,7 @@ import (
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/pluginapi"
 )
 
-var pluginVersion = "0.2.8"
+var pluginVersion = "0.2.9"
 
 type rpcAuthStart struct {
 	pluginapi.AuthLoginStartRequest
@@ -71,6 +71,11 @@ func registration() any {
 				{Name: "app_version", Type: pluginapi.ConfigFieldTypeString, Description: "Doubao desktop client version sent in request parameters (default 2.1.7)."},
 				{Name: "auto_open_browser", Type: pluginapi.ConfigFieldTypeBoolean, Description: "Open the isolated browser automatically. When false, browser sign-in returns a QR login instead of launching a browser."},
 				{Name: "browser", Type: pluginapi.ConfigFieldTypeString, Description: "Browser for account sign-in: auto, chrome, edge, or an absolute executable path."},
+				{Name: "runtime", Type: pluginapi.ConfigFieldTypeEnum, EnumValues: []string{"auto", "cloud", "local"}, Description: "Work-mode execution environment. auto uses local when workspace is set, otherwise cloud."},
+				{Name: "workspace", Type: pluginapi.ConfigFieldTypeString, Description: "Local workspace path for local work-mode tasks, for example D:\\WenPaul\\Documents."},
+				{Name: "device_name", Type: pluginapi.ConfigFieldTypeString, Description: "Local device name reported to Doubao. Defaults to the Windows host name."},
+				{Name: "sandbox_auth_type", Type: pluginapi.ConfigFieldTypeEnum, EnumValues: []string{"ask_always", "ask_risky", "always_allow"}, Description: "Local sandbox permission policy: ask_always, ask_risky (default), or always_allow."},
+				{Name: "local_app_id", Type: pluginapi.ConfigFieldTypeString, Description: "Override the Doubao app id used for local tasks. Defaults to the domestic chat app id."},
 			},
 		},
 		"capabilities": map[string]any{

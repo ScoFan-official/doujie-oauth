@@ -9,6 +9,9 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"os"
+	"path/filepath"
+	goruntime "runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -75,6 +78,9 @@ func buildRequest(req pluginapi.ExecutorRequest, sender httpSender) (preparedReq
 	if c.site() != siteCN {
 		hasSelection = false
 	}
+	if c.site() == siteCN && !hasSelection {
+		return out, pluginabi.NewError("model_unavailable", "model is not available for this Doubao account", 400)
+	}
 	deepValue := "0"
 	if hasSelection {
 		deepValue = selection.ItemID
@@ -103,7 +109,7 @@ func buildRequest(req pluginapi.ExecutorRequest, sender httpSender) (preparedReq
 	var sent map[string]any
 	if endpoint == "chat" {
 		path = "/chat/completion?"
-		sent = chatCompletionPayload(prompt, c.botIDForModel(model), selected, deepValue)
+		sent = chatCompletionPayload(prompt, c.botIDForModel(model), c, selected, deepValue)
 	} else {
 		path = "/samantha/chat/completion?"
 		sent = samanthaPayload(prompt, deep, c.botIDForModel(model), selected, deepValue)
@@ -447,7 +453,7 @@ func samanthaPayload(prompt string, deep bool, botID string, selection *modelSel
 	}
 }
 
-func chatCompletionPayload(prompt string, botID string, selection *modelSelection, deepValue string) map[string]any {
+func chatCompletionPayload(prompt string, botID string, c credential, selection *modelSelection, deepValue string) map[string]any {
 	textBlock := map[string]any{
 		"block_type": 10000,
 		"content": map[string]any{
@@ -464,22 +470,6 @@ func chatCompletionPayload(prompt string, botID string, selection *modelSelectio
 	}
 	now := time.Now()
 	localMessageID := randomUUID()
-	agentTaskParam := map[string]any{
-		"runtime_type":    1,
-		"folder_name":     "",
-		"device_name":     "",
-		"workspace":       "",
-		"local_app_id":    "",
-		"local_device_id": "",
-	}
-	generalTaskParam := map[string]any{
-		"action":                  0,
-		"thread_local_message_id": []any{localMessageID},
-		"project_id":              "",
-		"runtime_type":            1,
-		"agent_task_param":        agentTaskParam,
-		"server_do_compare":       true,
-	}
 	conversationInitOption := map[string]any{
 		"project_id":            "",
 		"need_ack_conversation": true,
@@ -492,8 +482,8 @@ func chatCompletionPayload(prompt string, botID string, selection *modelSelectio
 			conversationMode = parsed
 		}
 	}
+	workMode := selection != nil && selection.isWorkMode()
 	ext := map[string]any{
-		"general_task_param":            string(mustJSON(generalTaskParam)),
 		"use_deep_think":                deepValue,
 		"agent_mode":                    strconv.Itoa(agentMode),
 		"conversation_init_option":      string(mustJSON(conversationInitOption)),
@@ -537,7 +527,6 @@ func chatCompletionPayload(prompt string, botID string, selection *modelSelectio
 		"support_lazy_fetch_stream": true,
 		"is_ai_playground":          false,
 		"is_old_user":               true,
-		"general_task_param":        generalTaskParam,
 		"recovery_option": map[string]any{
 			"is_recovery":            false,
 			"req_create_time_sec":    now.Unix(),
@@ -548,13 +537,34 @@ func chatCompletionPayload(prompt string, botID string, selection *modelSelectio
 		"connector_info_list":         []any{},
 		"conversation_mode":           conversationMode,
 	}
+	var agentTaskParam map[string]any
+	var generalTaskParam map[string]any
+	if workMode {
+		agentTaskParam = workModeAgentTaskParam(c)
+		generalTaskParam = map[string]any{
+			"action":                  0,
+			"thread_local_message_id": []any{localMessageID},
+			"project_id":              "",
+			"runtime_type":            agentTaskParam["runtime_type"],
+			"agent_task_param":        agentTaskParam,
+			"server_do_compare":       true,
+		}
+		if _, local := agentTaskParam["sandbox_auth_type"]; local {
+			generalTaskParam["client_option"] = workModeClientOption(c, agentTaskParam)
+		}
+		ext["general_task_param"] = string(mustJSON(generalTaskParam))
+		option["general_task_param"] = generalTaskParam
+	}
 	if selection != nil {
-		option["conversation_init_ext"] = map[string]any{
-			"agent_task_param": string(mustJSON(agentTaskParam)),
+		initExt := map[string]any{
 			"model_item_key":   selection.ItemKey,
 			"reasoning_effort": strconv.Itoa(selection.ReasoningEffort),
 			"mode_id":          selection.ModeID,
 		}
+		if workMode {
+			initExt["agent_task_param"] = string(mustJSON(agentTaskParam))
+		}
+		option["conversation_init_ext"] = initExt
 		option["model_config"] = map[string]any{
 			"model_item_key":     selection.ItemKey,
 			"model_extra_params": selection.ExtraParams,
@@ -593,6 +603,80 @@ func chatCompletionPayload(prompt string, botID string, selection *modelSelectio
 		"option":       option,
 		"user_context": []any{},
 		"ext":          ext,
+	}
+}
+
+// workModeAgentTaskParam mirrors the desktop client's agent task parameter.
+// Cloud tasks carry only runtime_type=1; local tasks must carry the same
+// device/workspace fields the client fills in before sending.
+func workModeAgentTaskParam(c credential) map[string]any {
+	cfg := getConfig()
+	runtimeMode := strings.ToLower(strings.TrimSpace(cfg.Runtime))
+	local := runtimeMode == "local" || (runtimeMode == "auto" && cfg.Workspace != "")
+	if !local {
+		return map[string]any{"runtime_type": 1}
+	}
+	workspace := strings.TrimSpace(cfg.Workspace)
+	deviceName := strings.TrimSpace(cfg.DeviceName)
+	if deviceName == "" {
+		if host, err := os.Hostname(); err == nil {
+			deviceName = strings.TrimSpace(host)
+		}
+	}
+	folderName := ""
+	if workspace != "" {
+		folderName = filepath.Base(filepath.Clean(workspace))
+	}
+	localAppID := strings.TrimSpace(cfg.LocalAppID)
+	if localAppID == "" {
+		localAppID = c.profile().ChatAID
+	}
+	param := map[string]any{
+		"runtime_type":      2,
+		"device_name":       deviceName,
+		"folder_name":       folderName,
+		"local_app_id":      localAppID,
+		"local_device_id":   c.DeviceID,
+		"workspace":         workspace,
+		"sandbox_auth_type": sandboxAuthTypeValue(cfg.SandboxAuthType),
+	}
+	return param
+}
+
+func sandboxAuthTypeValue(value string) int {
+	switch strings.ToLower(strings.TrimSpace(value)) {
+	case "ask_always":
+		return 0
+	case "always_allow":
+		return 2
+	default:
+		return 1
+	}
+}
+
+func workModeClientOption(c credential, agentTaskParam map[string]any) map[string]any {
+	workspace, _ := agentTaskParam["workspace"].(string)
+	authType, _ := agentTaskParam["sandbox_auth_type"].(int)
+	osName := "Windows"
+	switch goruntime.GOOS {
+	case "darwin":
+		osName = "macOS"
+	case "linux":
+		osName = "Linux"
+	}
+	return map[string]any{
+		"agent_workspace": map[string]any{
+			"agent_workspace":   workspace,
+			"local_skill_paths": []any{},
+		},
+		"client_env_id":      randomUUID(),
+		"enable_sandbox":     true,
+		"os":                 osName,
+		"sandbox_auth_type":  authType,
+		"sandbox_env_id":     randomUUID(),
+		"sandbox_id":         "deferred-sandbox-" + randomUUID(),
+		"shared_folder_path": []any{workspace},
+		"workspace":          workspace,
 	}
 }
 
@@ -650,6 +734,18 @@ func parseChatEvent(data []byte, inThinking *bool) (doubaoMessage, bool) {
 	var blocks []any
 	if content, ok := obj["content"].(map[string]any); ok {
 		blocks = append(blocks, toSlice(content["content_block"])...)
+		if raw, ok := content["content"].(string); ok && raw != "" {
+			var inner map[string]any
+			if json.Unmarshal([]byte(raw), &inner) == nil {
+				if text, ok := inner["text"].(string); ok && text != "" {
+					if *inThinking {
+						msg.Think += text
+					} else {
+						msg.Text += text
+					}
+				}
+			}
+		}
 	}
 	for _, patch := range toSlice(obj["patch_op"]) {
 		patchMap, _ := patch.(map[string]any)

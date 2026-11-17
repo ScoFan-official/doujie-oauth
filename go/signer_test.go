@@ -182,10 +182,10 @@ func TestThirdPartyModelSelections(t *testing.T) {
 	}{
 		{"doubao-2.1-lite", "seed-lite-7b", "10001", "256000"},
 		{"deepseek-v4.1-flash", "person-deepseek-v4-1-flash-261017", "10001", "300000"},
-		{"deepseek-v4-pro", "deepseek-v4-pro-ga-260813", "10001", "300000"},
-		{"kimi-k3.1-pro", "kimi-k3-1-pro", "10001", "256000"},
-		{"kimi-k3.1-pro-high-speed", "kimi-k3-1-pro-highspeed", "10001", "256000"},
-		{"kimi-k3", "kimi-k3", "10001", "256000"},
+		{"deepseek-v4-pro", "person-deepseek-v4-pro-ga-260813", "10001", "300000"},
+		{"kimi-k3.1-pro", "person-kimi-k3-1-pro-261111", "10001", "300000"},
+		{"kimi-k3.1-pro-high-speed", "person-kimi-k3-1-pro-highspeed-261111", "10001", "300000"},
+		{"kimi-k3", "person-kimi-k3-261111", "10001", "300000"},
 		{"glm-5.3", "person-glm-5-3-261111", "10001", "300000"},
 		{"glm-5.3-flash", "person-glm-5-3-flash-261111", "10001", "300000"},
 	}

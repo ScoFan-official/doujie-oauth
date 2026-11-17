@@ -1,5 +1,38 @@
 # Changelog
 
+## 0.2.9 — 2026-11-17
+
+### 模型选择与客户端一致
+
+- 修正 Kimi K3.1 Pro、Kimi K3.1 Pro 高速、Kimi K3 和 DeepSeek V4 Pro 的 `model_item_key`。现在使用豆包工作模式菜单里的真实 key（`person-kimi-*-261111`、`person-deepseek-v4-pro-ga-260813`），不会再因为 key 不存在而静默回退到“自动/豆包”。
+- 同步修正 Kimi 的上下文参数为 `memory_profile=300k_230`、`total_window_size=300000`，与客户端菜单一致。
+- 未知的国内版模型现在返回 `400 model_unavailable`，不再把请求悄悄发送到默认模型。
+- 模型元数据的输入上限改为“总上下文 - 最大输出”（例如 256k 窗口显示 224k 输入 + 32k 输出），避免客户端把输入和输出相加后提示超限。
+
+### 普通对话不再被当成工作任务
+
+- 对话模式（`mode_id=1`）不再携带 `general_task_param` / `agent_task_param`，也不会创建云电脑任务；会话保持普通聊天形态，默认机器人也会使用普通对话 bot，而不是工作任务 bot。
+- 补齐 `STREAM_MSG_NOTIFY` 文本解析，普通对话的“收到”这类回复不会再被解析成空回答。
+
+### 本地电脑工作模式
+
+- 新增 `runtime`、`workspace`、`device_name`、`sandbox_auth_type`、`local_app_id` 配置。`runtime: local` 时按桌面客户端的真实结构发送 `runtime_type=2`、`local_device_id`、`local_app_id`、`workspace`、`sandbox_auth_type` 和 `client_option`，会话在豆包客户端显示为“本地电脑”。
+- `runtime: auto` 在配置了 `workspace` 时使用本地电脑，否则使用云电脑。云电脑任务只发送 `{"runtime_type":1}`，不再附带空本地字段。
+- 本地任务要求豆包桌面端正在运行且本地机器服务可用；如果桌面端未运行，请改回 `runtime: cloud`。
+
+### 升级说明
+
+- 现有 auth 文件不需要重新登录；升级后重启 CPA core 或重新加载插件即可。
+- 需要本地电脑模式时，在插件配置中增加：
+
+  ```yaml
+  runtime: local
+  workspace: D:\WenPaul\Documents
+  sandbox_auth_type: ask_risky
+  ```
+
+- 只使用普通对话模型时，可以设置 `runtime: cloud`；对话模式不会再创建工作任务。
+
 ## 0.2.8 — 2026-11-16
 
 ### 模型选择真正生效

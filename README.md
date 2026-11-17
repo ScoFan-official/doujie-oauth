@@ -224,6 +224,9 @@ plugins:
       endpoint: samantha
       signer: none
       max_concurrency: 3
+      runtime: auto
+      # workspace: D:\WenPaul\Documents
+      # sandbox_auth_type: ask_risky
       # public_base_url: https://cpa.example.com
 ```
 
@@ -248,6 +251,11 @@ Releases are created by GitHub Actions whenever a `v*` tag is pushed.
 | `app_version` | string | `2.1.7` | Domestic client version identifier |
 | `auto_open_browser` | boolean | `false` | Open the isolated browser automatically when `true`; the default `false` returns a QR login and never launches a browser |
 | `browser` | string | `auto` | `auto`, `chrome`, `edge`, or an absolute browser executable path |
+| `runtime` | enum | `auto` | `auto`, `cloud`, `local`; work-mode tasks only |
+| `workspace` | string | empty | Local directory used by `runtime: local`; `auto` selects local when set |
+| `device_name` | string | host name | Local device name reported to Doubao |
+| `sandbox_auth_type` | enum | `ask_risky` | `ask_always`, `ask_risky`, `always_allow` |
+| `local_app_id` | string | chat app id | Override the app id used for local tasks |
 
 ## Development
 

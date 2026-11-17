@@ -15,12 +15,21 @@ plugins:
       endpoint: samantha
       signer: none
       max_concurrency: 3
+      runtime: auto
+      # workspace: D:\WenPaul\Documents
+      # sandbox_auth_type: ask_risky
       # public_base_url: https://cpa.example.com
 ```
 
 `public_base_url` is needed for remote panels or reverse proxies. Local panels
 default to `http://127.0.0.1:<port>`; the plugin never appends resource paths to
 CPA's OAuth callback URL.
+
+`runtime` controls the Doubao work-mode execution environment. `cloud` keeps
+the previous cloud-computer behavior; `local` creates a local-computer task
+using `workspace`, the imported desktop device id, and the configured
+`sandbox_auth_type`; `auto` picks local when `workspace` is set and cloud
+otherwise. Ordinary chat models do not create work-mode tasks at all.
 
 ## 2. Authentication
 

@@ -81,6 +81,15 @@ func TestParseChatEventSeparatesThinkingFromAnswer(t *testing.T) {
 	}
 }
 
+func TestParseChatEventStreamMessageNotify(t *testing.T) {
+	inThinking := false
+	raw := []byte(`{"content":{"content_type":1,"content":"{\"text\":\"收到\",\"text_tags\":[]}","model_content":"收到"},"meta":{"message_id":"m"}}`)
+	msg, ok := parseChatEvent(raw, &inThinking)
+	if !ok || msg.Text != "收到" || msg.Think != "" {
+		t.Fatalf("unexpected stream message: %+v ok=%v", msg, ok)
+	}
+}
+
 func TestFlattenConversation(t *testing.T) {
 	body := anthropicRequest{
 		System: json.RawMessage(`"你是助手"`),

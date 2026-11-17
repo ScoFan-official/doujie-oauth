@@ -16,7 +16,7 @@
 
 ### 本地电脑工作模式
 
-- 新增 `runtime`、`workspace`、`device_name`、`sandbox_auth_type`、`local_app_id` 配置。`runtime: local` 时按桌面客户端的真实结构发送 `runtime_type=2`、`local_device_id`、`local_app_id`、`workspace`、`sandbox_auth_type` 和 `client_option`，会话在豆包客户端显示为“本地电脑”。
+- 新增 `runtime`、`workspace`、`device_name`、`sandbox_auth_type`、`local_app_id`、`client_os` 配置。`runtime: local` 时按桌面客户端的真实结构发送 `runtime_type=2`、`local_device_id`、`local_app_id`、`workspace`、`sandbox_auth_type` 和 `client_option`，会话在豆包客户端显示为“本地电脑”。
 - `runtime: auto` 在配置了 `workspace` 时使用本地电脑，否则使用云电脑。云电脑任务只发送 `{"runtime_type":1}`，不再附带空本地字段。
 - 本地任务要求豆包桌面端正在运行且本地机器服务可用；如果桌面端未运行，请改回 `runtime: cloud`。
 

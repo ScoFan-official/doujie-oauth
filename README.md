@@ -256,6 +256,7 @@ Releases are created by GitHub Actions whenever a `v*` tag is pushed.
 | `device_name` | string | host name | Local device name reported to Doubao |
 | `sandbox_auth_type` | enum | `ask_risky` | `ask_always`, `ask_risky`, `always_allow` |
 | `local_app_id` | string | chat app id | Override the app id used for local tasks |
+| `client_os` | enum | `Windows` | `Windows`, `macOS`, `Linux` for the local desktop device |
 
 ## Development
 

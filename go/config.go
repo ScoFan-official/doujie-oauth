@@ -25,6 +25,7 @@ type config struct {
 	DeviceName      string `yaml:"device_name"`
 	SandboxAuthType string `yaml:"sandbox_auth_type"`
 	LocalAppID      string `yaml:"local_app_id"`
+	ClientOS        string `yaml:"client_os"`
 }
 
 var configMu sync.RWMutex
@@ -42,6 +43,7 @@ func defaults() config {
 		Browser:         "auto",
 		Runtime:         "auto",
 		SandboxAuthType: "ask_risky",
+		ClientOS:        "Windows",
 	}
 }
 
@@ -118,6 +120,20 @@ func configure(raw []byte) error {
 	c.Workspace = strings.TrimSpace(c.Workspace)
 	c.DeviceName = strings.TrimSpace(c.DeviceName)
 	c.LocalAppID = strings.TrimSpace(c.LocalAppID)
+	c.ClientOS = strings.TrimSpace(c.ClientOS)
+	if c.ClientOS == "" {
+		c.ClientOS = "Windows"
+	}
+	switch strings.ToLower(c.ClientOS) {
+	case "windows", "win":
+		c.ClientOS = "Windows"
+	case "macos", "mac", "darwin":
+		c.ClientOS = "macOS"
+	case "linux":
+		c.ClientOS = "Linux"
+	default:
+		return fmt.Errorf("invalid doubao plugin configuration: client_os must be Windows, macOS, or Linux")
+	}
 	c.SandboxAuthType = strings.ToLower(strings.TrimSpace(c.SandboxAuthType))
 	switch c.SandboxAuthType {
 	case "", "ask_always", "ask_risky", "always_allow":

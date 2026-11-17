@@ -76,6 +76,7 @@ func registration() any {
 				{Name: "device_name", Type: pluginapi.ConfigFieldTypeString, Description: "Local device name reported to Doubao. Defaults to the Windows host name."},
 				{Name: "sandbox_auth_type", Type: pluginapi.ConfigFieldTypeEnum, EnumValues: []string{"ask_always", "ask_risky", "always_allow"}, Description: "Local sandbox permission policy: ask_always, ask_risky (default), or always_allow."},
 				{Name: "local_app_id", Type: pluginapi.ConfigFieldTypeString, Description: "Override the Doubao app id used for local tasks. Defaults to the domestic chat app id."},
+				{Name: "client_os", Type: pluginapi.ConfigFieldTypeEnum, EnumValues: []string{"Windows", "macOS", "Linux"}, Description: "Operating system reported for the local desktop device. Defaults to Windows."},
 			},
 		},
 		"capabilities": map[string]any{

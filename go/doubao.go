@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	goruntime "runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -665,12 +664,9 @@ func sandboxAuthTypeValue(value string) int {
 func workModeClientOption(c credential, agentTaskParam map[string]any) map[string]any {
 	workspace, _ := agentTaskParam["workspace"].(string)
 	authType, _ := agentTaskParam["sandbox_auth_type"].(int)
-	osName := "Windows"
-	switch goruntime.GOOS {
-	case "darwin":
-		osName = "macOS"
-	case "linux":
-		osName = "Linux"
+	osName := strings.TrimSpace(getConfig().ClientOS)
+	if osName == "" {
+		osName = "Windows"
 	}
 	return map[string]any{
 		"agent_workspace": map[string]any{

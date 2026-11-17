@@ -18,6 +18,7 @@ plugins:
       runtime: auto
       # workspace: D:\WenPaul\Documents
       # sandbox_auth_type: ask_risky
+      # client_os: Windows
       # public_base_url: https://cpa.example.com
 ```
 

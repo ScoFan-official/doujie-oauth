@@ -227,6 +227,7 @@ plugins:
 | `device_name` | 字符串 | 主机名 | 上报给豆包的本地设备名 |
 | `sandbox_auth_type` | 枚举 | `ask_risky` | `ask_always`、`ask_risky`、`always_allow` |
 | `local_app_id` | 字符串 | 聊天 app id | 覆盖本地任务使用的 app id |
+| `client_os` | 枚举 | `Windows` | 本地桌面设备系统：`Windows`、`macOS`、`Linux` |
 
 ## 开发
 
